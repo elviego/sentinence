@@ -4,12 +4,82 @@ import ArgumentList from "../../src/components/ArgumentList";
 import CategoryFilter from "../../src/components/CategoryFilter";
 import ProgressBar from "../../src/components/ProgressBar";
 
-type Status = "idle" | "loading" | "ready" | "error";
+type Status = "idle" | "loading" | "ready" | "error" | "needs-key";
 
 interface AnalysisState {
   url: string;
   title: string;
   sentences: ClassifiedSentence[];
+}
+
+function ApiKeySetup({ onSaved }: { onSaved: () => void }) {
+  const [apiKey, setApiKey] = useState("");
+  const [masked, setMasked] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    const trimmed = apiKey.trim();
+    if (!trimmed) return;
+    setSaving(true);
+    await chrome.storage.local.set({ apiKey: trimmed });
+    setSaving(false);
+    onSaved();
+  }
+
+  return (
+    <div className="mx-3 mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-lg">🔑</span>
+        <p className="font-semibold text-amber-900 text-sm">API key required</p>
+      </div>
+      <p className="text-xs text-amber-800 mb-3">
+        Sentinence uses the Anthropic API to classify sentences. Enter your key
+        below — it is stored locally and only sent to{" "}
+        <span className="font-mono">api.anthropic.com</span>.
+      </p>
+
+      <label className="block text-xs font-medium text-amber-900 mb-1">
+        Anthropic API Key
+      </label>
+      <div className="relative mb-1">
+        <input
+          type={masked ? "password" : "text"}
+          value={apiKey}
+          onChange={(e) => setApiKey(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleSave()}
+          placeholder="sk-ant-..."
+          autoFocus
+          className="w-full border border-amber-300 bg-white rounded px-2.5 py-1.5 text-xs pr-12 focus:outline-none focus:ring-2 focus:ring-amber-400"
+        />
+        <button
+          type="button"
+          onClick={() => setMasked((m) => !m)}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-amber-600 hover:text-amber-800"
+        >
+          {masked ? "show" : "hide"}
+        </button>
+      </div>
+      <p className="text-[10px] text-amber-700 mb-3">
+        Get a key at{" "}
+        <a
+          href="https://console.anthropic.com/"
+          target="_blank"
+          rel="noreferrer"
+          className="underline hover:text-amber-900"
+        >
+          console.anthropic.com
+        </a>
+      </p>
+
+      <button
+        onClick={handleSave}
+        disabled={!apiKey.trim() || saving}
+        className="w-full bg-amber-600 text-white text-xs py-1.5 rounded hover:bg-amber-700 disabled:opacity-40 transition-colors font-medium"
+      >
+        {saving ? "Saving…" : "Save & analyse"}
+      </button>
+    </div>
+  );
 }
 
 export default function App() {
@@ -58,8 +128,9 @@ export default function App() {
         setFilter("All");
       }
       if (message.type === "ANALYSIS_ERROR") {
+        const isNoKey = message.error.toLowerCase().includes("no api key");
         setError(message.error);
-        setStatus("error");
+        setStatus(isNoKey ? "needs-key" : "error");
       }
     };
     chrome.runtime.onMessage.addListener(handler);
@@ -78,7 +149,6 @@ export default function App() {
   }
 
   function handleReanalyse() {
-    // Clear cache for current URL, then re-analyse
     chrome.tabs.query({ active: true, currentWindow: true }, async ([tab]) => {
       if (tab?.url) {
         try {
@@ -141,7 +211,7 @@ export default function App() {
           >
             Re-analyse
           </button>
-        ) : status !== "loading" ? (
+        ) : status !== "loading" && status !== "needs-key" ? (
           <button
             onClick={handleAnalyse}
             className="text-xs bg-blue-600 text-white px-2.5 py-1 rounded hover:bg-blue-700 transition-colors"
@@ -165,7 +235,12 @@ export default function App() {
         <ProgressBar processed={progress.processed} total={progress.total} />
       )}
 
-      {/* Error state */}
+      {/* No API key — inline setup */}
+      {status === "needs-key" && (
+        <ApiKeySetup onSaved={handleAnalyse} />
+      )}
+
+      {/* Generic error state */}
       {status === "error" && (
         <div className="mx-3 mt-3 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-xs">
           <p className="font-semibold mb-1">Analysis failed</p>
@@ -193,7 +268,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Filter chips */}
+      {/* Results */}
       {status === "ready" && analysis && (
         <>
           <CategoryFilter
