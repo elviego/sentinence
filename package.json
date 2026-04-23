@@ -1,0 +1,32 @@
+{
+  "name": "sentinence",
+  "type": "module",
+  "version": "0.1.0",
+  "description": "AI-powered argument mapper for articles",
+  "scripts": {
+    "dev": "wxt",
+    "build": "wxt build",
+    "build:firefox": "wxt build -b firefox",
+    "zip": "wxt zip",
+    "postinstall": "wxt prepare",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.40.0",
+    "@mozilla/readability": "^0.5.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/mozilla__readability": "^0.4.2",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.14",
+    "typescript": "^5.5.4",
+    "wxt": "^0.20.25",
+    "@wxt-dev/module-react": "^1.2.2"
+  }
+}
